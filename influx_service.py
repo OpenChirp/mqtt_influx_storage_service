@@ -42,7 +42,6 @@ import common
 import requests
 import requests_cache
 import influxdb
-from memoize import memoize, delete_memoized
 from requests.auth import HTTPBasicAuth
 
 class MqttClient():
@@ -125,12 +124,12 @@ def store_message(msg, timestamp):
     
     # check if the payload is json
     try:
-        payload = json.loads(msg.payload)
+        payload = json.loads(str(msg.payload))
     except ValueError:
         logging.info("Ignoring message, payload not JSON: ["+str(msg.payload)+"]")
         return
     except:
-        logging.critical("Unable to convert JSON")        
+        logging.error("Unable to convert JSON")        
         return
 
     device_id = words[2]
@@ -291,7 +290,7 @@ auth_cred = HTTPBasicAuth(conf['service_id'], conf['password'])
 points_lock = threading.Lock()
 publish_stats_daemon = threading.Thread(name='StatsTimer', target=publish_status, daemon=True)
 
-ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS, thread_name_prefix="Consumer")
+ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS)
 
 # set logging configurations
 common.configure_logging(conf)
