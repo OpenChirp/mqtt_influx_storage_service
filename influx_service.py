@@ -74,7 +74,7 @@ class MqttClient():
 
     def on_message(self, client, userdata, msg):
         logging.debug("Got mesage from topic: " + str(msg.topic))
-        self.queue.put( (datetime.datetime.now(), msg) )
+        self.queue.put( (datetime.datetime.utcnow(), msg) )
 
     def get_queue(self):
         return self.queue
@@ -140,7 +140,7 @@ def store_message(msg, timestamp):
     get_or_create_transducer(device, transducer_name)
     point = {
         'measurement': device_id+"_"+transducer_name,
-        'time': time.gmtime(timestamp), # time in UTC
+        'time': timestamp, # time in UTC
         'fields': {
             'value': msg.payload
             }
@@ -163,9 +163,7 @@ def store_message(msg, timestamp):
     
 # This method creates the transducer if it does not exist
 def get_or_create_transducer(device, transducer_name):
-
-    global auth_cred
-    logging.debug("Creds:"+str(auth_cred))
+    
     deviceId = device["id"]
     transducers = device["transducers"]
 

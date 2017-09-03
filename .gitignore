@@ -101,3 +101,4 @@ ENV/
 .mypy_cache/
 .vscode
 cache.sqlite
+service_test.conf
