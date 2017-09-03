@@ -140,7 +140,7 @@ def store_message(msg, timestamp):
     get_or_create_transducer(device, transducer_name)
     point = {
         'measurement': device_id+"_"+transducer_name,
-        'time': timestamp, # truncate at nano second accuracy
+        'time': time.gmtime(timestamp), # time in UTC
         'fields': {
             'value': msg.payload
             }
@@ -164,6 +164,8 @@ def store_message(msg, timestamp):
 # This method creates the transducer if it does not exist
 def get_or_create_transducer(device, transducer_name):
 
+    global auth_cred
+    logging.debug("Creds:"+str(auth_cred))
     deviceId = device["id"]
     transducers = device["transducers"]
 
@@ -274,7 +276,7 @@ def publish_status():
         
 # Global variables
 
-NUM_THREAD_WORKERS = 3
+NUM_THREAD_WORKERS = 1
 PUBLISH_STATS_INTERVAL = 600    # 10 minutes
 TOPICS = ['openchirp/devices/+/transducer/#']
 INFLUX_DATABASE = 'openchirp'
