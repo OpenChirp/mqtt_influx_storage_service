@@ -121,15 +121,12 @@ def store_message(msg, timestamp):
     if(len(words) < 5):
         logging.info("Skipping message: " + str(msg.topic)+" : "+str(msg.payload))
         return
-    
-    # check if the payload is json
+
+    # check if the payload is a number of float
     try:
-        payload = json.loads(str(msg.payload))
+    	float(str(msg.payload, "utf-8"))
     except ValueError:
-        logging.info("Ignoring message, payload not JSON: ["+str(msg.payload)+"]")
-        return
-    except:
-        logging.error("Unable to convert JSON")        
+        logging.info("Ignoring message, payload not a number of float: ["+str(msg.payload)+"]")
         return
 
     device_id = words[2]
