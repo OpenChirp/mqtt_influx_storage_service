@@ -114,7 +114,7 @@ def store_message_wrapper(msg, timestamp):
 
 # Stores the mqtt message into influxdb
 def store_message(msg, timestamp):
-    logging.info("Storing message " + str(msg.topic))
+    logging.info("Got message " + str(msg.topic))
     words = msg.topic.split('/')
 
     # ignore non transducer data
@@ -129,11 +129,23 @@ def store_message(msg, timestamp):
         logging.info("Ignoring message, payload not a number or float: ["+str(msg.payload)+"]")
         return
 
+    # get device info
     device_id = words[2]
     device = get_device(device_id)
-
     if device is None:
         logging.info("Skipping message "+str(msg)+". Could not get a device with id :" + device_id)
+        return
+
+    # confirm that the device has the storage service associated
+    has_service = False
+    if 'linked_services' in device.keys():
+        for s in device['linked_services']:
+            if s['service_id'] == conf['service_id']:
+                has_service = True
+                break
+    
+    if not has_service:
+        logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
         return
 
     transducer_name = words[4].lower()
@@ -274,7 +286,7 @@ def publish_status():
         
 # Global variables
 
-NUM_THREAD_WORKERS = 1
+NUM_THREAD_WORKERS = 3
 PUBLISH_STATS_INTERVAL = 600    # 10 minutes
 TOPICS = ['openchirp/devices/+/transducer/#']
 INFLUX_DATABASE = 'openchirp'
