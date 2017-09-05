@@ -95,7 +95,6 @@ def signal_handler(signal, frame):
     logging.info('Received kill signal ..Stopping service daemon')
 
     global running
-    global publish_stats_timer
 
     running = False
 
