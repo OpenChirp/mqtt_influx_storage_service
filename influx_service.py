@@ -122,11 +122,11 @@ def store_message(msg, timestamp):
         return
 
     # check if the payload is a number or float
-    try:
-    	float(str(msg.payload, "utf-8"))
-    except ValueError:
-        logging.info("Ignoring message, payload not a number or float: ["+str(msg.payload)+"]")
-        return
+    #try:
+    #	float(str(msg.payload, "utf-8"))
+    #except ValueError:
+    #    logging.info("Ignoring message, payload not a number or float: ["+str(msg.payload)+"]")
+    #    return
 
     # get device info
     device_id = words[2]
