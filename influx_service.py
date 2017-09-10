@@ -304,8 +304,8 @@ ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS)
 common.configure_logging(conf)
 
 # set the HTTP reqests cache timeout to 5 minutes and clear in memory cache
-requests_cache.install_cache(expire_after=300)
-requests_cache.clear()
+#requests_cache.install_cache(expire_after=300)
+#requests_cache.clear()
 
 # create Influx client
 influx_client = influxdb.InfluxDBClient(conf['influxdb_host'], conf['influxdb_port'],
