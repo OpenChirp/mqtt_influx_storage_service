@@ -247,10 +247,10 @@ def get_device(device_id):
         if(res.ok):
             device = res.json()
 
-            if res.from_cache:
-                logging.debug("Using Cached HTTP Query Content")
-            else:
-                logging.debug("Got New Content: "+str(device))
+            #if res.from_cache:
+            #    logging.debug("Using Cached HTTP Query Content")
+            #else:
+            logging.debug("Got New Content: "+str(device))
 
             return device
         
