@@ -3,4 +3,3 @@ configparser
 paho-mqtt
 twisted
 requests
-requests-cache

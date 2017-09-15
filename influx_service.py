@@ -40,7 +40,7 @@ import paho.mqtt.client as mqtt
 
 import common
 import requests
-import requests_cache
+#import requests_cache
 import influxdb
 from requests.auth import HTTPBasicAuth
 
@@ -59,6 +59,8 @@ class MqttClient():
 
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
+
+        self.subTopics = set()
         
         self.client.loop_start()
 
@@ -68,7 +70,7 @@ class MqttClient():
         threading.current_thread().setName("MqttClient")
         
         logging.info('Connected to mqtt broker with result code '+str(rc))
-        for topic in TOPICS:
+        for topic in self.subTopics:
             logging.info('Subscibing to mqtt topic ' + topic)
             client.subscribe(topic)
 
@@ -88,6 +90,10 @@ class MqttClient():
         logging.info('Disconnecting MqttClient ...')
         self.client.loop_stop()
         logging.info('MqttClient Disconected')
+
+    def subscribe(self, topic):
+        self.subTopics.add(topic)
+        self.client.subscribe(topic)
 
 
 # Define stop action
@@ -114,11 +120,22 @@ def store_message_wrapper(msg, timestamp):
 # Stores the mqtt message into influxdb
 def store_message(msg, timestamp):
     logging.info("Got message " + str(msg.topic))
+
+    if msg.topic == events_topic:
+        process_event(msg.payload)
+        return
+
     words = msg.topic.split('/')
 
     # ignore non transducer data
     if(len(words) < 5):
         logging.info("Skipping message: " + str(msg.topic)+" : "+str(msg.payload))
+        return
+
+
+    elif "transducer" not in str(words[3]):
+        logging.error(words[3])
+        logging.info("Skipping non transducer message: " + str(msg.topic)+" : "+str(msg.payload))
         return
 
     # check if the payload is a number or float
@@ -130,25 +147,13 @@ def store_message(msg, timestamp):
 
     # get device info
     device_id = words[2]
-    device = get_device(device_id)
-    if device is None:
-        logging.info("Skipping message "+str(msg)+". Could not get a device with id :" + device_id)
-        return
-
-    # confirm that the device has the storage service associated
-    has_service = False
-    if 'linked_services' in device.keys():
-        for s in device['linked_services']:
-            if s['service_id'] == conf['service_id']:
-                has_service = True
-                break
-    
-    if not has_service:
-        logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
-        return
+    with devices_lock:
+        if device_id not in devices.keys():
+            logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
+            return
 
     transducer_name = words[4].lower()
-    get_or_create_transducer(device, transducer_name)
+    init_transducer(device_id, transducer_name)
     point = {
         'measurement': device_id+"_"+transducer_name,
         'time': timestamp, # time in UTC
@@ -173,57 +178,23 @@ def store_message(msg, timestamp):
         logging.error(ie)
     
 # This method creates the transducer if it does not exist
-def get_or_create_transducer(device, transducer_name):
+def init_transducer(device_id, transducer_name):
     
-    deviceId = device["id"]
-    transducers = device["transducers"]
-
-    for item in transducers:
-        if(item["name"].lower() == transducer_name):
-            logging.debug("Found transducer: "+ str(transducer_name) +
-                " has content: "+str(item))
-            return item
-
-    logging.info("Transducer not found in device properties, reloading device transducers...")
-    
-    url = str(conf['rest_url'] + "/device/"+device["id"]+"/transducer")
-
-    # Reload transducers before creating one
-    try:
-        with requests_cache.disabled():
-            response = requests.get(url, auth = auth_cred)
-
-        if(response.ok):
-            transducers = response.json()
-            for item in transducers:
-                if(item["name"].lower() == transducer_name):
-                    logging.debug("Found transducer: "+ str(transducer_name)+
-                        " contains: " + str(item))
-                    return item
-        else:
-            logging.error("Error in getting transducers " +
-                str(response.status_code))
+    with devices_lock:
+        if device_id in devices.keys() and transducer_name in devices[device_id]:
             return
 
-    except ConnectionError as ce:
-        logging.error("Connection error :" + url)
-        logging.exception(ce)
-        return
+    url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
 
-    except requests.exceptions.RequestException as re:
-        logging.error("RequestsException :" + url)
-        logging.exception(re)
-        return
-
-    logging.info("About to create non existent transducer "+transducer_name +
-        " on device " + device["id"])    
+    logging.debug("About to create non existent transducer "+transducer_name +
+        " on device " + device_id)    
     data = {}
     data['name'] = transducer_name;
     data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"} 
     try:
         response = requests.post(url, data = data, auth = auth_cred)
         if(response.ok):
-            logging.info("Transducer created")
+            logging.info("New Transducer created")
         else:
             logging.error("Error in creating transducer : HTTP code : "+str(response.status_code) +
                 " Content : "+str(response.json()))
@@ -278,34 +249,103 @@ def publish_status():
         time.sleep(PUBLISH_STATS_INTERVAL)
         points_temp = pointsWritten
         status = dict()
-        status["message"] = "Points written in the last 10 minutes : "+str(points_temp)
+        with devices_lock:
+            d = len(devices)
+        status["message"] = "Points written 10 min avg : {} / #Devices: {}".format(
+            str(points_temp), str(d))
         mqtt_client.publish(status_topic, json.dumps(status))
         with points_lock:
             pointsWritten -= points_temp
-        
+
+def process_event(payload):
+    e = json.loads(str(payload, "utf-8"))
+    a = str(e['action'])
+    id = str(e['thing']['id'])
+    logging.info("Service Event: {} device {}".format(str(a), str(id)))
+
+    if a in ['new', 'update']:
+        d = get_device(str(id))
+        tl = set()
+        for item in d["transducers"]:
+            tl.add(item['name'])
+        with devices_lock:
+            devices[id] = tl
+        logging.info("Loaded {} transducers for {}".format(str(len(tl)), str(id)))
+
+    elif a == 'delete':
+        with devices_lock:
+            if id in devices.keys():
+                del devices[id]
+    
+def load_devices():
+    url = things_url
+    transducers_loaded = 0
+    try:
+        res = requests.get(url, auth = auth_cred)
+        if(res.ok):
+            things = res.json()
+            for t in things:
+                d = get_device(str(t['id']))
+                tl = set()
+                for item in d["transducers"]:
+                    tl.add(item['name'])
+                    transducers_loaded += 1
+                with devices_lock:
+                    devices[t['id']] = tl
+            with devices_lock:
+                logging.info('Loaded {} devices and {} transducers'.format(
+                    len(devices), transducers_loaded))                     
+            return True
+        else:
+            logging.error("Error response ["+str(res.status_code)+"]")
+
+    except ConnectionError as ce:
+        logging.error("Connection error : " + url)
+        logging.exception(ce)
+            
+    except requests.exceptions.RequestException as re:
+        logging.error("RequestException :" + url)
+        logging.exception(re)
+
+    except Exception as e:
+        logging.exception(e)
+
+
+
 # Global variables
 
-NUM_THREAD_WORKERS = 3
+NUM_THREAD_WORKERS = 2
 PUBLISH_STATS_INTERVAL = 600    # 10 minutes
-TOPICS = ['openchirp/devices/+/transducer/#']
 INFLUX_DATABASE = 'openchirp'
 
 running = True
 conf = common.parse_arguments() # read configuration parameters
-pointsWritten = 0   # keeps track of the points written in the last 10 minutes
 status_topic = 'openchirp/services/'+ str(conf['service_id']) +'/status'
+events_topic = 'openchirp/services/'+ str(conf['service_id']) +'/thing/events'
+transducers_topic = 'openchirp/devices/+/transducer/#'
+things_url = str(conf['rest_url'] + '/service/' + conf['service_id'] + '/things')
+
 auth_cred = HTTPBasicAuth(conf['service_id'], conf['password'])
-points_lock = threading.Lock()
+
 publish_stats_daemon = threading.Thread(name='StatsTimer', target=publish_status, daemon=True)
 
-ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS)
+# user in memory device defenition storage
+devices = dict()
+pointsWritten = 0   # keeps track of the points written in the last 10 minutes
+
+points_lock = threading.Lock()
+devices_lock = threading.Lock()
+
+
+
+# Change Thread name in Python 3.6+
+if sys.version_info.major >= 3 and sys.version_info.minor > 5:
+    ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS, thread_name_prefix="Consumer")
+else:
+    ex = ThreadPoolExecutor(max_workers=NUM_THREAD_WORKERS)
 
 # set logging configurations
 common.configure_logging(conf)
-
-# set the HTTP reqests cache timeout to 5 minutes and clear in memory cache
-requests_cache.install_cache(expire_after=1)
-requests_cache.clear()
 
 # create Influx client
 influx_client = influxdb.InfluxDBClient(conf['influxdb_host'], conf['influxdb_port'],
@@ -314,6 +354,16 @@ influx_client = influxdb.InfluxDBClient(conf['influxdb_host'], conf['influxdb_po
 # start mqtt client
 mqtt_client = MqttClient(host=conf['mqtt_broker'], port='1883', client_id=conf['client_id'],
     service_id=conf['service_id'], password=conf['password'], ssl_location=conf['ssl_location'])
+
+mqtt_client.subscribe(events_topic) # start processing service changes right away
+
+# load Devices using the Rest API
+logging.info('Loading Device Information ...')
+if load_devices() != True:
+    logging.fatal('Error Loading Devices')
+    exit()
+
+mqtt_client.subscribe(transducers_topic) # processing transducer requests
 
 logging.info("Starting ...")
 publish_stats_daemon.start()
@@ -328,3 +378,5 @@ while running:
     except:
         logging.error("Unable to process message from the queue")
         continue
+
+
