@@ -195,6 +195,8 @@ def init_transducer(device_id, transducer_name):
         response = requests.post(url, data = data, auth = auth_cred)
         if(response.ok):
             logging.info("New Transducer created")
+            with devices_lock:
+                devices[device_id].add(transducer_name)
         else:
             logging.error("Error in creating transducer : HTTP code : "+str(response.status_code) +
                 " Content : "+str(response.json()))
