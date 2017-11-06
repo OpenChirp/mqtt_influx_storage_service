@@ -184,6 +184,16 @@ def init_transducer(device_id, transducer_name):
         if device_id in devices.keys() and transducer_name in devices[device_id]:
             return
 
+    # Check if transducer was just created
+    updated_deivce = get_device(device_id)
+    tl = set()
+    for item in updated_deivce["transducers"]:
+        tl.add(item['name'])
+    with devices_lock:
+        devices[device_id] = tl
+        if transducer_name in devices[device_id]:
+            return
+
     url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
 
     logging.debug("About to create non existent transducer "+transducer_name +
