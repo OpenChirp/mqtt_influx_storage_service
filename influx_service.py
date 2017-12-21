@@ -138,6 +138,13 @@ def store_message(msg, timestamp):
         logging.info("Skipping non transducer message: " + str(msg.topic)+" : "+str(msg.payload))
         return
 
+    # get device info
+    device_id = words[2]
+    with devices_lock:
+        if device_id not in devices.keys():
+            logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
+            return
+
     # check if the payload is a number or float
     #try:
     #	float(str(msg.payload, "utf-8"))
@@ -178,13 +185,6 @@ def store_message(msg, timestamp):
         else:
             value = msg.payload
             logging.debug("Failed to parse payload as a number or boolean: ["+str(msg.payload)+"]")
-
-    # get device info
-    device_id = words[2]
-    with devices_lock:
-        if device_id not in devices.keys():
-            logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
-            return
 
     transducer_name = words[4].lower()
     init_transducer(device_id, transducer_name)
