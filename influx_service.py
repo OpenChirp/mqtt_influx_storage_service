@@ -185,9 +185,9 @@ def init_transducer(device_id, transducer_name):
             return
 
     # Check if transducer was just created
-    updated_deivce = get_device(device_id)
+    updated_device = get_device(device_id)
     tl = set()
-    for item in updated_deivce["transducers"]:
+    for item in updated_device["transducers"]:
         tl.add(item['name'])
     with devices_lock:
         devices[device_id] = tl
