@@ -196,8 +196,16 @@ def store_message(msg, timestamp):
             }
     }
 
+    organized_point = {
+        'measurement': device_id,
+        'time': timestamp, # time in UTC
+        'fields': {
+            transducer_name: value
+            }
+    }
+
     try:
-        success = influx_client.write_points([point], time_precision='n', protocol = 'json')
+        success = influx_client.write_points([point, organized_point], time_precision='n', protocol = 'json')
         if success:
             logging.debug("Point Saved in InfluxDB")
         else:
