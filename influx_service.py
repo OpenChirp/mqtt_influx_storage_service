@@ -164,7 +164,7 @@ def store_message(msg, timestamp):
     # could be integer or float to succeed
     try:
         value = float(str(msg.payload, "utf-8"))
-        logging.debug("Parsed payload as a float: ["+str(msg.payload)+"]")
+        logging.debug("Parsed payload as float "+str(value)+": ["+str(msg.payload)+"]")
     except ValueError:
         logging.debug("Failed to parse payload as a float: ["+str(msg.payload)+"]")
 
