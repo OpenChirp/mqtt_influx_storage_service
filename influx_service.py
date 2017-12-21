@@ -168,13 +168,6 @@ def store_message(msg, timestamp):
     except ValueError:
         logging.debug("Failed to parse payload as a float: ["+str(msg.payload)+"]")
 
-    # must be integer to succeed
-    # try:
-    #     value = int(str(msg.payload, "utf-8"))
-    #     logging.debug("Parsed payload as an integer: ["+str(msg.payload)+"]")
-    # except ValueError:
-    #     logging.debug("Failed to parse payload as an integer: ["+str(msg.payload)+"]")
-
     if value == None:
         if msg.payload in ['t', 'T', 'true', 'True']:
             value = True
