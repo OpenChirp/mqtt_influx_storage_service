@@ -36,8 +36,6 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
-from hashlib import sha1
-
 import paho.mqtt.client as mqtt
 
 import common
@@ -198,7 +196,7 @@ def init_transducer(device_id, transducer_name):
         if transducer_name in devices[device_id]:
             return
 
-    key = sha1(device_id.encode('utf-8')+transducer_name.encode('utf-8')).hexdigest()
+    key = device_id.encode('utf-8')+transducer_name.encode('utf-8')
     with transducers_dict_lock:
         if key not in transducers_locks.keys():
             transducers_locks[key] = threading.Lock()
