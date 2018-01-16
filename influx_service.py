@@ -36,6 +36,8 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
+from hashlib import sha1
+
 import paho.mqtt.client as mqtt
 
 import common
@@ -179,10 +181,12 @@ def store_message(msg, timestamp):
     
 # This method creates the transducer if it does not exist
 def init_transducer(device_id, transducer_name):
-    
+
     with devices_lock:
         if device_id in devices.keys() and transducer_name in devices[device_id]:
             return
+
+
 
     # Check if transducer was just created
     updated_device = get_device(device_id)
@@ -194,10 +198,25 @@ def init_transducer(device_id, transducer_name):
         if transducer_name in devices[device_id]:
             return
 
-    url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
+    key = sha1(device_id.encode('utf-8')+transducer_name.encode('utf-8')).hexdigest()
+    with transducers_dict_lock:
+        if key not in transducers_locks.keys():
+            transducers_locks[key] = threading.Lock()
+    
+    # only allow one thread to create the transducer
+    with transducers_locks[key]:
+        # check if transducer has already been created by the other thread
+        if transducer_name in devices[device_id]:
+            return
+        else:
+            init_transducer_aux(device_id, transducer_name)
 
+
+    
+def init_transducer_aux(device_id, transducer_name):    
     logging.debug("About to create non existent transducer "+transducer_name +
-        " on device " + device_id)    
+        " on device " + device_id)
+    url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
     data = {}
     data['name'] = transducer_name;
     data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"} 
@@ -326,7 +345,7 @@ def load_devices():
 
 # Global variables
 
-NUM_THREAD_WORKERS = 2
+NUM_THREAD_WORKERS = 3
 PUBLISH_STATS_INTERVAL = 600    # 10 minutes
 INFLUX_DATABASE = 'openchirp'
 
@@ -347,6 +366,8 @@ pointsWritten = 0   # keeps track of the points written in the last 10 minutes
 
 points_lock = threading.Lock()
 devices_lock = threading.Lock()
+transducers_dict_lock = threading.Lock()
+transducers_locks = dict()
 
 
 
