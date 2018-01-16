@@ -210,6 +210,7 @@ def init_transducer(device_id, transducer_name):
             return
         else:
             init_transducer_aux(device_id, transducer_name)
+        del transducers_locks[key]
 
 
     
