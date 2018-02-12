@@ -138,13 +138,6 @@ def store_message(msg, timestamp):
         logging.info("Skipping non transducer message: " + str(msg.topic)+" : "+str(msg.payload))
         return
 
-    # check if the payload is a number or float
-    #try:
-    #	float(str(msg.payload, "utf-8"))
-    #except ValueError:
-    #    logging.info("Ignoring message, payload not a number or float: ["+str(msg.payload)+"]")
-    #    return
-
     # get device info
     device_id = words[2]
     with devices_lock:
@@ -152,18 +145,67 @@ def store_message(msg, timestamp):
             logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
             return
 
+    # check if the payload is a number or float
+    #try:
+    #	float(str(msg.payload, "utf-8"))
+    #except ValueError:
+    #    logging.info("Ignoring message, payload not a number or float: ["+str(msg.payload)+"]")
+    #    return
+
+    # Try to parse a Float or Boolean
+
+    # Influx Notes:
+    # * Influx must be able to discern a Float64, Int64, String, or Boolean value.
+    # * Influx will assume float for a number if not explicitly specified.
+    # * If the value is quoted, this signals to Influx to save it as a string.
+    #
+    # Implementation Notes:
+    # * We will discern Numbers, Booleans, and String/Binary incoming types.
+    # * We will only try to parse numbers as floats, since people and services
+    #   may flip between integers and floats without care.
+    # * We rely on the dict to JSON marshaller to produce a natural string or
+    #   a base64 string from binary data.
+
+    value = None
+
+    # could be integer or float to succeed
+    try:
+        value = float(str(msg.payload, "utf-8"))
+        logging.debug("Parsed payload as float "+str(value)+": ["+str(msg.payload)+"]")
+    except ValueError:
+        logging.debug("Failed to parse payload as a float: ["+str(msg.payload)+"]")
+
+    if value == None:
+        if msg.payload in ['true', 'True']:
+            value = True
+            logging.debug("Parsed payload as a boolean True: ["+str(msg.payload)+"]")
+        elif msg.payload in ['false', 'False']:
+            value = False
+            logging.debug("Parsed payload as a boolean False: ["+str(msg.payload)+"]")
+        else:
+            value = msg.payload
+            logging.debug("Failed to parse payload as a number or boolean: ["+str(msg.payload)+"]")
+
     transducer_name = words[4].lower()
     init_transducer(device_id, transducer_name)
     point = {
         'measurement': device_id+"_"+transducer_name,
         'time': timestamp, # time in UTC
         'fields': {
-            'value': msg.payload
+            'value': value
+            }
+    }
+
+    organized_point = {
+        'measurement': device_id,
+        'time': timestamp, # time in UTC
+        'fields': {
+            transducer_name: value
             }
     }
 
     try:
-        success = influx_client.write_points([point], time_precision='n', protocol = 'json')
+        success = influx_client.write_points([point, organized_point], time_precision='n', protocol = 'json')
         if success:
             logging.debug("Point Saved in InfluxDB")
         else:
