@@ -176,10 +176,10 @@ def store_message(msg, timestamp):
         logging.debug("Failed to parse payload as a float: ["+str(msg.payload)+"]")
 
     if value == None:
-        if msg.payload in ['t', 'T', 'true', 'True']:
+        if msg.payload in ['true', 'True']:
             value = True
             logging.debug("Parsed payload as a boolean True: ["+str(msg.payload)+"]")
-        elif msg.payload in ['f', 'F', 'false', 'False']:
+        elif msg.payload in ['false', 'False']:
             value = False
             logging.debug("Parsed payload as a boolean False: ["+str(msg.payload)+"]")
         else:
