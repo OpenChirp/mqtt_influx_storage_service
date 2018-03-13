@@ -392,9 +392,9 @@ INFLUX_DATABASE = 'openchirp'
 
 running = True
 conf = common.parse_arguments() # read configuration parameters
-status_topic = 'openchirp/services/'+ str(conf['service_id']) +'/status'
-events_topic = 'openchirp/services/'+ str(conf['service_id']) +'/thing/events'
-transducers_topic = 'openchirp/devices/+/transducer/#'
+status_topic = 'openchirp/service/'+ str(conf['service_id']) +'/status'
+events_topic = 'openchirp/service/'+ str(conf['service_id']) +'/thing/events'
+transducers_topic = 'openchirp/device/+/transducer/#'
 things_url = str(conf['rest_url'] + '/service/' + conf['service_id'] + '/things')
 
 auth_cred = HTTPBasicAuth(conf['service_id'], conf['password'])
