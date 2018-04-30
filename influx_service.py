@@ -46,15 +46,16 @@ from requests.auth import HTTPBasicAuth
 
 class MqttClient():
 
-    def __init__(self, host, port, client_id, service_id, password,
-        ssl_location):
+    def __init__(self, host, port, client_id, service_id, password, 
+        enable_ssl, ssl_location):
         
         logging.info('MqttClient : Init')
         self.client = mqtt.Client(client_id)
         self.queue = queue.Queue()
         
         self.client.username_pw_set(service_id, password)
-        self.client.tls_set(ssl_location, tls_version = ssl.PROTOCOL_TLSv1)
+        if enable_ssl == True:
+            self.client.tls_set(ssl_location, tls_version = ssl.PROTOCOL_TLSv1)
         self.client.connect(host, int(port), 60)
 
         self.client.on_connect = self.on_connect
@@ -427,7 +428,7 @@ influx_client = influxdb.InfluxDBClient(conf['influxdb_host'], conf['influxdb_po
 
 # start mqtt client
 mqtt_client = MqttClient(host=conf['mqtt_broker'], port='1883', client_id=conf['client_id'],
-    service_id=conf['service_id'], password=conf['password'], ssl_location=conf['ssl_location'])
+        service_id=conf['service_id'], password=conf['password'], enable_ssl = conf['enable_ssl'], ssl_location=conf['ssl_location'])
 
 mqtt_client.subscribe(events_topic) # start processing service changes right away
 
