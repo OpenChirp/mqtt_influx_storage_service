@@ -46,13 +46,13 @@ from requests.auth import HTTPBasicAuth
 
 class MqttClient():
 
-    def __init__(self, host, port, client_id, service_id, password, 
+    def __init__(self, host, port, client_id, service_id, password,
         enable_ssl, ssl_location):
-        
+
         logging.info('MqttClient : Init')
         self.client = mqtt.Client(client_id)
         self.queue = queue.Queue()
-        
+
         self.client.username_pw_set(service_id, password)
         if enable_ssl == True:
             self.client.tls_set(ssl_location, tls_version = ssl.PROTOCOL_TLSv1)
@@ -62,14 +62,14 @@ class MqttClient():
         self.client.on_message = self.on_message
 
         self.subTopics = set()
-        
+
         self.client.loop_start()
 
 
     def on_connect(self, client, userdata, flags, rc):
-        
+
         threading.current_thread().setName("MqttClient")
-        
+
         logging.info('Connected to mqtt broker with result code '+str(rc))
         for topic in self.subTopics:
             logging.info('Subscibing to mqtt topic ' + topic)
@@ -219,7 +219,7 @@ def store_message(msg, timestamp):
     except influxdb.exceptions.InfluxDBClientError as ie:
         logging.error("Error in writing to influxdb")
         logging.error(ie)
-    
+
 # This method creates the transducer if it does not exist
 def init_transducer(device_id, transducer_name):
 
@@ -243,7 +243,7 @@ def init_transducer(device_id, transducer_name):
     with transducers_dict_lock:
         if key not in transducers_locks.keys():
             transducers_locks[key] = threading.Lock()
-    
+
     # only allow one thread to create the transducer
     with transducers_locks[key]:
         # check if transducer has already been created by the other thread
@@ -254,14 +254,14 @@ def init_transducer(device_id, transducer_name):
         del transducers_locks[key]
 
 
-    
-def init_transducer_aux(device_id, transducer_name):    
+
+def init_transducer_aux(device_id, transducer_name):
     logging.debug("About to create non existent transducer "+transducer_name +
         " on device " + device_id)
     url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
     data = {}
     data['name'] = transducer_name;
-    data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"} 
+    data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"}
     try:
         response = requests.post(url, data = data, auth = auth_cred)
         if(response.ok):
@@ -297,7 +297,7 @@ def get_device(device_id):
             logging.debug("Got New Content: "+str(device))
 
             return device
-        
+
         else:
             logging.error("Error response ["+str(res.status_code)+"]")
             return
@@ -305,8 +305,8 @@ def get_device(device_id):
     except ConnectionError as ce:
         logging.error("Connection error : " + url)
         logging.exception(ce)
-        return 
-            
+        return
+
     except requests.exceptions.RequestException as re:
         logging.error("RequestException :" + url)
         logging.exception(re)
@@ -349,7 +349,7 @@ def process_event(payload):
         with devices_lock:
             if id in devices.keys():
                 del devices[id]
-    
+
 def load_devices():
     url = things_url
     transducers_loaded = 0
@@ -367,7 +367,7 @@ def load_devices():
                     devices[t['id']] = tl
             with devices_lock:
                 logging.info('Loaded {} devices and {} transducers'.format(
-                    len(devices), transducers_loaded))                     
+                    len(devices), transducers_loaded))
             return True
         else:
             logging.error("Error response ["+str(res.status_code)+"]")
@@ -375,7 +375,7 @@ def load_devices():
     except ConnectionError as ce:
         logging.error("Connection error : " + url)
         logging.exception(ce)
-            
+
     except requests.exceptions.RequestException as re:
         logging.error("RequestException :" + url)
         logging.exception(re)
