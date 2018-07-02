@@ -72,7 +72,7 @@ class MqttClient():
 
         logging.info('Connected to mqtt broker with result code '+str(rc))
         for topic in self.subTopics:
-            logging.info('Subscibing to mqtt topic ' + topic)
+            logging.info('Subscribing to mqtt topic ' + topic)
             client.subscribe(topic)
 
     def on_message(self, client, userdata, msg):
@@ -90,7 +90,7 @@ class MqttClient():
     def stop(self):
         logging.info('Disconnecting MqttClient ...')
         self.client.loop_stop()
-        logging.info('MqttClient Disconected')
+        logging.info('MqttClient Disconnected')
 
     def subscribe(self, topic):
         self.subTopics.add(topic)
