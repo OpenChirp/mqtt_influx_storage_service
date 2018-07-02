@@ -427,7 +427,7 @@ influx_client = influxdb.InfluxDBClient(conf['influxdb_host'], conf['influxdb_po
     conf['influxdb_user'], conf['influxdb_password'], INFLUX_DATABASE)
 
 # start mqtt client
-mqtt_client = MqttClient(host=conf['mqtt_broker'], port='1883', client_id=conf['client_id'],
+mqtt_client = MqttClient(host=conf['mqtt_broker'], port=conf['mqtt_broker_port'], client_id=conf['client_id'],
         service_id=conf['service_id'], password=conf['password'], enable_ssl = conf['enable_ssl'], ssl_location=conf['ssl_location'])
 
 mqtt_client.subscribe(events_topic) # start processing service changes right away
