@@ -263,7 +263,7 @@ def init_transducer_aux(device_id, transducer_name):
     data['name'] = transducer_name
     data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"}
     try:
-        response = requests.post(url, data = data, auth = auth_cred)
+        response = requests.post(url, json = data, auth = auth_cred)
         if(response.ok):
             logging.info("New Transducer created")
             with devices_lock:
