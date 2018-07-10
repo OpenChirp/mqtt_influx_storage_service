@@ -260,7 +260,7 @@ def init_transducer_aux(device_id, transducer_name):
         " on device " + device_id)
     url = str(conf['rest_url'] + "/device/"+device_id+"/transducer")
     data = {}
-    data['name'] = transducer_name;
+    data['name'] = transducer_name
     data['properties'] = {"created_by" : "OpenChirp Influxdb Storage service"}
     try:
         response = requests.post(url, data = data, auth = auth_cred)
@@ -272,7 +272,7 @@ def init_transducer_aux(device_id, transducer_name):
             logging.error("Error in creating transducer : HTTP code : "+str(response.status_code) +
                 " Content : "+str(response.json()))
 
-    except ConnectionError as ce:
+    except requests.exceptions.ConnectionError as ce:
             logging.error("Connection error : " + url)
             logging.exception(ce)
             return
@@ -302,7 +302,7 @@ def get_device(device_id):
             logging.error("Error response ["+str(res.status_code)+"]")
             return
 
-    except ConnectionError as ce:
+    except requests.exceptions.ConnectionError as ce:
         logging.error("Connection error : " + url)
         logging.exception(ce)
         return
@@ -372,7 +372,7 @@ def load_devices():
         else:
             logging.error("Error response ["+str(res.status_code)+"]")
 
-    except ConnectionError as ce:
+    except requests.exceptions.ConnectionError as ce:
         logging.error("Connection error : " + url)
         logging.exception(ce)
 
