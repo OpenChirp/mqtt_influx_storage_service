@@ -126,8 +126,18 @@ def store_message(msg, timestamp):
         process_event(msg.payload)
         return
 
-    # Topic Format: openchirp/device/DEVICE_ID/TRANSDUCER_NAME
     words = msg.topic.split('/')
+
+    # ignore non transducer data
+    if(len(words) < 5):
+        logging.info("Skipping message: " + str(msg.topic)+" : "+str(msg.payload))
+        return
+
+
+    elif "transducer" not in str(words[3]):
+        logging.error(words[3])
+        logging.info("Skipping non transducer message: " + str(msg.topic)+" : "+str(msg.payload))
+        return
 
     # get device info
     device_id = words[2]
@@ -135,9 +145,6 @@ def store_message(msg, timestamp):
         if device_id not in devices.keys():
             logging.info("Device "+str(device_id)+" is not liked to the storage service, skipping...")
             return
-
-    transducer_name = words[3].lower()
-    init_transducer(device_id, transducer_name)
 
     # check if the payload is a number or float
     #try:
@@ -180,6 +187,8 @@ def store_message(msg, timestamp):
             value = msg.payload
             logging.debug("Failed to parse payload as a number or boolean: ["+str(msg.payload)+"]")
 
+    transducer_name = words[4].lower()
+    init_transducer(device_id, transducer_name)
     point = {
         'measurement': device_id+"_"+transducer_name,
         'time': timestamp, # time in UTC
